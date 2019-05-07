@@ -34,25 +34,24 @@ def upsampling(inputs):
 if __name__ == "__main__":
     mydir = r'imgs'
     mydirTest = r'imgsTest'
+    outdir = r'outputs'
     images = [files for files in os.listdir(mydir)]
-    
+
     imagesTest = [files for files in os.listdir(mydirTest)]
-    #print("Hej")
-    
+
     N = len(images)
     data = np.zeros([N, 256, 256, 3]) # N is number of images for training
     for count in range(len(images)):
         img = cv2.resize(io.imread(mydir + '/'+ images[count]), (256, 256))
         data[count,:,:,:] = img
-    
+
     # Test image
     Ntest = len(imagesTest)
     dataTest = np.zeros([Ntest, 256, 256, 3]) # N is number of images for testing
     for count in range(len(imagesTest)):
-        print('hej')
         img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (256, 256))
         dataTest[count,:,:,:] = img
-        
+
     num_train = N
     Xtrain = color.rgb2lab(data[:num_train]*1.0/255)
     xt = Xtrain[:,:,:,0]
@@ -60,7 +59,7 @@ if __name__ == "__main__":
     yt = yt/128
     xt = xt.reshape(num_train, 256, 256, 1)
     yt = yt.reshape(num_train, 256, 256, 2)
-    
+
     num_test = Ntest
     Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
     xtest = Xtest[:,:,:,0]
@@ -107,11 +106,15 @@ if __name__ == "__main__":
         lossvalue = session.run(cost, feed_dict = {x:xt, ytrue : yt})
         print("epoch: " + str(i) + " loss: " + str(lossvalue))
 
-    print("hej")
-    output = session.run(conv13, feed_dict = {x: xtest[0].reshape([1, 256, 256, 1])})*128
-    image = np.zeros([256, 256, 3])
-    image[:,:,0]=xtest[0][:,:,0]
-    image[:,:,1:]=output[0]
-    image = color.lab2rgb(image)
-    image = img_as_ubyte(image)
-    io.imsave("test.jpg", image)
+    # Save model
+    saver = tf.train.Saver()
+    saver.save(session, "tmp/model.ckpt")
+    # saver.restore(session, "/tmp/model.ckpt")
+
+    for i in range(len(inputs)):
+        output = session.run(conv13, feed_dict = {x: xtest[i].reshape([1, 256, 256, 1])})*128
+        image = np.zeros([256, 256, 3])
+        image[:,:,0]=xtest[i][:,:,0]
+        image[:,:,1:]=output[0]
+        image = color.lab2rgb(image)
+        io.imsave(outDir + "/out_" + str(i) + ".jpg", image)

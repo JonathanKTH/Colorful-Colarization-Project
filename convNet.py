@@ -34,20 +34,20 @@ def upsampling(inputs):
 if __name__ == "__main__":
     mydir = r'imgs'
     mydirTest = r'imgsTest'
-    outdir = r'outputs'
+    outDir = r'outputs'
     images = [files for files in os.listdir(mydir)]
 
     imagesTest = [files for files in os.listdir(mydirTest)]
 
     N = len(images)
-    data = np.zeros([N, 224, 224, 3]) # N is number of images for training
+    data = np.zeros([N, 256, 256, 3]) # N is number of images for training
     for count in range(len(images)):
-        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
+        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (256, 256))
         data[count,:,:,:] = img
 
     # Test image
     Ntest = len(imagesTest)
-    dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
+    dataTest = np.zeros([Ntest, 256, 256, 3]) # N is number of images for testing
     for count in range(len(imagesTest)):
         img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (256, 256))
         dataTest[count,:,:,:] = img
@@ -63,11 +63,11 @@ if __name__ == "__main__":
     num_test = Ntest
     Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
     xtest = Xtest[:,:,:,0]
-    xtest = xtest.reshape(num_test, 224, 224, 1)
+    xtest = xtest.reshape(num_test, 256, 256, 1)
 
     session = tf.Session()
-    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
-    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
+    x = tf.placeholder(tf.float32, shape = [None, 256, 256, 1], name = 'x')
+    ytrue = tf.placeholder(tf.float32, shape = [None, 256, 256, 2], name = 'ytrue')
 
     conv1 = convolution(x, 1, 3, 3)
     max1 = maxpool(conv1, 2, 2)
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     saver.save(session, "tmp/model.ckpt")
     # saver.restore(session, "/tmp/model.ckpt")
 
-    for i in range(len(inputs)):
+    for i in range(len(imagesTest)):
         output = session.run(conv13, feed_dict = {x: xtest[i].reshape([1, 256, 256, 1])})*128
         image = np.zeros([256, 256, 3])
         image[:,:,0]=xtest[i][:,:,0]

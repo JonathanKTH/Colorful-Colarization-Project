@@ -40,17 +40,17 @@ if __name__ == "__main__":
     #print("Hej")
     
     N = len(images)
-    data = np.zeros([N, 256, 256, 3]) # N is number of images for training
+    data = np.zeros([N, 224, 224, 3]) # N is number of images for training
     for count in range(len(images)):
-        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (256, 256))
+        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
         data[count,:,:,:] = img
     
     # Test image
     Ntest = len(imagesTest)
-    dataTest = np.zeros([Ntest, 256, 256, 3]) # N is number of images for testing
+    dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
     for count in range(len(imagesTest)):
         print('hej')
-        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (256, 256))
+        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (224, 224))
         dataTest[count,:,:,:] = img
         
     num_train = N
@@ -58,17 +58,17 @@ if __name__ == "__main__":
     xt = Xtrain[:,:,:,0]
     yt = Xtrain[:,:,:,1:]
     yt = yt/128
-    xt = xt.reshape(num_train, 256, 256, 1)
-    yt = yt.reshape(num_train, 256, 256, 2)
+    xt = xt.reshape(num_train, 224, 224, 1)
+    yt = yt.reshape(num_train, 224, 224, 2)
     
     num_test = Ntest
     Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
     xtest = Xtest[:,:,:,0]
-    xtest = xtest.reshape(num_test, 256, 256, 1)
+    xtest = xtest.reshape(num_test, 224, 224, 1)
 
     session = tf.Session()
-    x = tf.placeholder(tf.float32, shape = [None, 256, 256, 1], name = 'x')
-    ytrue = tf.placeholder(tf.float32, shape = [None, 256, 256, 2], name = 'ytrue')
+    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
+    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
 
     conv1 = convolution(x, 1, 3, 3)
     max1 = maxpool(conv1, 2, 2)
@@ -108,8 +108,8 @@ if __name__ == "__main__":
         print("epoch: " + str(i) + " loss: " + str(lossvalue))
 
     print("hej")
-    output = session.run(conv13, feed_dict = {x: xtest[0].reshape([1, 256, 256, 1])})*128
-    image = np.zeros([256, 256, 3])
+    output = session.run(conv13, feed_dict = {x: xtest[0].reshape([1, 224, 224, 1])})*128
+    image = np.zeros([224, 224, 3])
     image[:,:,0]=xtest[0][:,:,0]
     image[:,:,1:]=output[0]
     image = color.lab2rgb(image)

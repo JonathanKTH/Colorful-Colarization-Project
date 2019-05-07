@@ -32,7 +32,7 @@ def upsampling(inputs):
     return layer
 
 if __name__ == "__main__":
-    mydir = r'imgs'
+    mydir = r'tiny-imagenet-200/all_train'
     mydirTest = r'imgsTest'
     outDir = r'outputs'
     images = [files for files in os.listdir(mydir)]

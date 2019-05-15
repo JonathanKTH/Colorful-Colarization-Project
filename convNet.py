@@ -5,7 +5,34 @@ import skimage.color as color
 import skimage.io as io
 from skimage import img_as_ubyte
 
+#NEW
+import keras.backend as K
+
+from keras.models import Model, load_model
+from keras.callbacks import LambdaCallback
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers import Conv2D, Conv2DTranspose, Input, BatchNormalization, UpSampling2D
+from keras.optimizers import Adam
+from keras.engine.topology import Layer
+from keras import Sequential
+
 import os, sys
+
+def conv_layer(x, filters, strides=1, idx=1, dilations=1):
+    if type(dilations) is int:
+        dilations = [dilations]*len(strides)
+    elif type(strides) is int:
+        strides = [strides]*len(dilations)
+    
+        
+    for i, (stride, dilation) in enumerate(zip(strides, dilations)):
+        if type(stride) is int:
+            x = Conv2D(filters, 3, strides=stride, padding='same', dilation_rate=dilation,
+                       activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
+        else:
+            x = Conv2DTranspose(filters, 3, strides=int(1 / stride), padding='same',
+                                activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
+    return BatchNormalization(name='bn' + str(idx))(x)
 
 def create_weights(shape):
     return tf.Variable(tf.truncated_normal(shape, stddev=0.1))
@@ -32,7 +59,7 @@ def upsampling(inputs):
     return layer
 
 if __name__ == "__main__":
-    mydir = r'imgs'
+    mydir = r'tiny-imagenet-200/train/n01443537/images'
     mydirTest = r'imgsTest'
     images = [files for files in os.listdir(mydir)]
     
@@ -49,7 +76,6 @@ if __name__ == "__main__":
     Ntest = len(imagesTest)
     dataTest = np.zeros([Ntest, 256, 256, 3]) # N is number of images for testing
     for count in range(len(imagesTest)):
-        print('hej')
         img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (256, 256))
         dataTest[count,:,:,:] = img
         
@@ -69,34 +95,44 @@ if __name__ == "__main__":
     session = tf.Session()
     x = tf.placeholder(tf.float32, shape = [None, 256, 256, 1], name = 'x')
     ytrue = tf.placeholder(tf.float32, shape = [None, 256, 256, 2], name = 'ytrue')
-
-    conv1 = convolution(x, 1, 3, 3)
-    max1 = maxpool(conv1, 2, 2)
-    conv2 = convolution(max1, 3, 3, 8)
-    max2 = maxpool(conv2, 2, 2)
-    conv3 = convolution(max2, 8, 3, 16)
-    max3 = maxpool(conv3, 2, 2)
-    conv4 = convolution(max3, 16, 3, 16)
-    max4 = maxpool(conv4, 2, 2)
-    conv5 = convolution(max4, 16, 3, 32)
-    max5 = maxpool(conv5, 2, 2)
-    conv6 = convolution(max5, 32, 3, 32)
-    max6 = maxpool(conv6, 2, 2)
-    conv7 = convolution(max6, 32, 3, 64)
-    upsample1 = upsampling(conv7)
-    conv8 = convolution(upsample1, 64, 3, 32)
-    upsample2 = upsampling(conv8)
-    conv9 = convolution(upsample2, 32, 3, 32)
-    upsample3 = upsampling(conv9)
-    conv10 = convolution(upsample3, 32, 3, 16)
-    upsample4 = upsampling(conv10)
-    conv11 = convolution(upsample4, 16, 3, 16)
-    upsample5 = upsampling(conv11)
-    conv12 = convolution(upsample5, 16, 3, 8)
-    upsample6 = upsampling(conv12)
-    conv13 = convolution(upsample6, 8, 3, 2)
-
-    loss = tf.losses.mean_squared_error(labels = ytrue, predictions = conv13)
+    
+    
+    l_in = Input((256, 256, 1))
+    xx = conv_layer(l_in, 64, [1, 2], 1)
+    xx = conv_layer(xx, 128, [1, 2], 2)
+    xx = conv_layer(xx, 256, [1, 1, 2], 3)
+    xx = conv_layer(xx, 512, [1]*3, 4)
+    xx = conv_layer(xx, 512, [1]*3, 5, 2)
+    xx = conv_layer(xx, 512, [1]*3, 6, 2)
+    xx = conv_layer(xx, 256, [1]*3, 7)
+    xx = conv_layer(xx, 128, [0.5, 1, 1], 8)
+#   
+    
+    xx = Conv2D(2, 1, padding='same', name='conv9')(xx)
+    xx = UpSampling2D(4, name='upsample')(xx)
+    
+    model = Model(l_in, xx)
+    
+    model.compile(optimizer='adam',
+              loss='mean_squared_error',
+              metrics=['accuracy'])
+    trainer = Model()
+    
+    allmodel_sum = model.summary()
+    
+    # Train the model
+    history = model.fit(xt, yt, epochs=25, verbose = 1)
+    
+    output = model.predict(xtest[0].reshape([1, 256, 256, 1]))
+    image = np.zeros([256, 256, 3])
+    image[:,:,0]=xtest[0][:,:,0]
+    image[:,:,1:]=output[0]
+    image = color.lab2rgb(image)
+    image = img_as_ubyte(image)
+    io.imsave("test2.jpg", image)
+    sys.exit()
+    
+    loss = tf.losses.mean_squared_error(labels = ytrue, predictions = xx)
     cost = tf.reduce_mean(loss)
     optimizer = tf.train.AdamOptimizer(learning_rate = 0.0001).minimize(cost)
     session.run(tf.global_variables_initializer())

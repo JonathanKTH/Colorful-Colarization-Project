@@ -59,7 +59,7 @@ def upsampling(inputs):
     return layer
 
 if __name__ == "__main__":
-    mydir = r'tiny-imagenet-200/train/n01443537/images'
+    mydir = r'imgs'
     mydirTest = r'imgsTest'
     images = [files for files in os.listdir(mydir)]
     
@@ -67,16 +67,16 @@ if __name__ == "__main__":
     #print("Hej")
     
     N = len(images)
-    data = np.zeros([N, 256, 256, 3]) # N is number of images for training
+    data = np.zeros([N, 224, 224, 3]) # N is number of images for training
     for count in range(len(images)):
-        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (256, 256))
+        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
         data[count,:,:,:] = img
     
     # Test image
     Ntest = len(imagesTest)
-    dataTest = np.zeros([Ntest, 256, 256, 3]) # N is number of images for testing
+    dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
     for count in range(len(imagesTest)):
-        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (256, 256))
+        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (224, 224))
         dataTest[count,:,:,:] = img
         
     num_train = N
@@ -84,20 +84,20 @@ if __name__ == "__main__":
     xt = Xtrain[:,:,:,0]
     yt = Xtrain[:,:,:,1:]
     yt = yt/128
-    xt = xt.reshape(num_train, 256, 256, 1)
-    yt = yt.reshape(num_train, 256, 256, 2)
+    xt = xt.reshape(num_train, 224, 224, 1)
+    yt = yt.reshape(num_train, 224, 224, 2)
     
     num_test = Ntest
     Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
     xtest = Xtest[:,:,:,0]
-    xtest = xtest.reshape(num_test, 256, 256, 1)
+    xtest = xtest.reshape(num_test, 224, 224, 1)
 
     session = tf.Session()
-    x = tf.placeholder(tf.float32, shape = [None, 256, 256, 1], name = 'x')
-    ytrue = tf.placeholder(tf.float32, shape = [None, 256, 256, 2], name = 'ytrue')
+    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
+    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
     
     
-    l_in = Input((256, 256, 1))
+    l_in = Input((224, 224, 1))
     xx = conv_layer(l_in, 64, [1, 2], 1)
     xx = conv_layer(xx, 128, [1, 2], 2)
     xx = conv_layer(xx, 256, [1, 1, 2], 3)
@@ -123,31 +123,31 @@ if __name__ == "__main__":
     # Train the model
     history = model.fit(xt, yt, epochs=25, verbose = 1)
     
-    output = model.predict(xtest[0].reshape([1, 256, 256, 1]))
-    image = np.zeros([256, 256, 3])
+    output = model.predict(xtest[0].reshape([1, 224, 224, 1])) * 128
+    image = np.zeros([224, 224, 3])
     image[:,:,0]=xtest[0][:,:,0]
     image[:,:,1:]=output[0]
     image = color.lab2rgb(image)
     image = img_as_ubyte(image)
     io.imsave("test2.jpg", image)
-    sys.exit()
-    
-    loss = tf.losses.mean_squared_error(labels = ytrue, predictions = xx)
-    cost = tf.reduce_mean(loss)
-    optimizer = tf.train.AdamOptimizer(learning_rate = 0.0001).minimize(cost)
-    session.run(tf.global_variables_initializer())
-
-    num_epochs = 100
-    for i in range(num_epochs):
-        session.run(optimizer, feed_dict = {x: xt, ytrue:yt})
-        lossvalue = session.run(cost, feed_dict = {x:xt, ytrue : yt})
-        print("epoch: " + str(i) + " loss: " + str(lossvalue))
-
-    print("hej")
-    output = session.run(conv13, feed_dict = {x: xtest[0].reshape([1, 256, 256, 1])})*128
-    image = np.zeros([256, 256, 3])
-    image[:,:,0]=xtest[0][:,:,0]
-    image[:,:,1:]=output[0]
-    image = color.lab2rgb(image)
-    image = img_as_ubyte(image)
-    io.imsave("test.jpg", image)
+#    sys.exit()
+#    
+#    loss = tf.losses.mean_squared_error(labels = ytrue, predictions = xx)
+#    cost = tf.reduce_mean(loss)
+#    optimizer = tf.train.AdamOptimizer(learning_rate = 0.0001).minimize(cost)
+#    session.run(tf.global_variables_initializer())
+#
+#    num_epochs = 100
+#    for i in range(num_epochs):
+#        session.run(optimizer, feed_dict = {x: xt, ytrue:yt})
+#        lossvalue = session.run(cost, feed_dict = {x:xt, ytrue : yt})
+#        print("epoch: " + str(i) + " loss: " + str(lossvalue))
+#
+#    print("hej")
+#    output = session.run(conv13, feed_dict = {x: xtest[0].reshape([1, 256, 256, 1])})*128
+#    image = np.zeros([256, 256, 3])
+#    image[:,:,0]=xtest[0][:,:,0]
+#    image[:,:,1:]=output[0]
+#    image = color.lab2rgb(image)
+#    image = img_as_ubyte(image)
+#    io.imsave("test.jpg", image)

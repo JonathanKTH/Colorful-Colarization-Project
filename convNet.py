@@ -34,32 +34,8 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
                                 activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
     return BatchNormalization(name='bn' + str(idx))(x)
 
-def create_weights(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.1))
-
-def create_bias(size):
-    return tf.Variable(tf.constant(0.1, shape = [size]))
-
-def convolution(inputs, num_channels, filter_size, num_filters):
-    weights = create_weights(shape = [filter_size, filter_size, num_channels, num_filters])
-    bias = create_bias(num_filters)
-
-  ## convolutional layer
-    layer = tf.nn.conv2d(input = inputs, filter = weights, strides= [1, 1, 1, 1], padding = 'SAME') + bias
-    layer = tf.nn.tanh(layer)
-    return layer
-
-
-def maxpool(inputs, kernel, stride):
-    layer = tf.nn.max_pool(value = inputs, ksize = [1, kernel, kernel, 1], strides = [1, stride, stride, 1], padding = "SAME")
-    return layer
-
-def upsampling(inputs):
-    layer = tf.image.resize_nearest_neighbor(inputs, (2*inputs.get_shape().as_list()[1], 2*inputs.get_shape().as_list()[2]))
-    return layer
-
 if __name__ == "__main__":
-    mydir = r'imgs'
+    mydir = r'holder'
     mydirTest = r'imgsTest'
     images = [files for files in os.listdir(mydir)]
     
@@ -95,7 +71,8 @@ if __name__ == "__main__":
     session = tf.Session()
     x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
     ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
-    
+    print("it works")
+    sys.exit()
     
     l_in = Input((224, 224, 1))
     xx = conv_layer(l_in, 64, [1, 2], 1)
@@ -116,9 +93,9 @@ if __name__ == "__main__":
     model.compile(optimizer='adam',
               loss='mean_squared_error',
               metrics=['accuracy'])
-    trainer = Model()
-    
-    allmodel_sum = model.summary()
+#    trainer = Model()
+#    
+#    allmodel_sum = model.summary()
     
     # Train the model
     history = model.fit(xt, yt, epochs=25, verbose = 1)

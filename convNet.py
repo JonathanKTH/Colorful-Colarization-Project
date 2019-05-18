@@ -18,7 +18,7 @@ from keras.optimizers import Adam
 from keras.engine.topology import Layer
 from keras import Sequential
 from keras import losses
-from colorizer import lab_to_rgb, rgb_to_lab
+#from colorizer import lab_to_rgb, rgb_to_lab
 from tqdm import tqdm
 
 
@@ -41,30 +41,30 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
                                 activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
     return BatchNormalization(name='bn' + str(idx))(x)
 
-class LAB(Layer):
-    def call(self, x):
-        l, ab_truth = rgb_to_lab(x / 255)
-        return [l, ab_truth]
-    
-    def compute_output_shape(self, input_shape):
-        input_shape = np.array(input_shape)
-        l_shape = input_shape.copy()
-        ab_shape = input_shape.copy()
-        l_shape[-1] = 1
-        ab_shape[-1] = 2
-        return [tuple(l_shape), tuple(ab_shape)]
-    
-class MeanSquaredError(Layer):
-    def call(self, x):
-        ab_true, ab_pred = x
-        return losses.mean_squared_error(ab_pred, ab_truth)
-    
-    def compute_output_shape(self, input_shape):
-        return (None, 1)    
+#class LAB(Layer):
+#    def call(self, x):
+#        l, ab_truth = rgb_to_lab(x / 255)
+#        return [l, ab_truth]
+#    
+#    def compute_output_shape(self, input_shape):
+#        input_shape = np.array(input_shape)
+#        l_shape = input_shape.copy()
+#        ab_shape = input_shape.copy()
+#        l_shape[-1] = 1
+#        ab_shape[-1] = 2
+#        return [tuple(l_shape), tuple(ab_shape)]
+#    
+#class MeanSquaredError(Layer):
+#    def call(self, x):
+#        ab_true, ab_pred = x
+#        return losses.mean_squared_error(ab_pred, ab_truth)
+#    
+#    def compute_output_shape(self, input_shape):
+#        return (None, 1)    
+#
 
-
-def identity_error(dummy_target, loss):
-    return K.mean(loss, axis=-1)
+#def identity_error(dummy_target, loss):
+#    return K.mean(loss, axis=-1)
 
 def image_a_b_gen(Xtrain, batches):
     for batch in generator.flow(Xtrain, batch_size=10):

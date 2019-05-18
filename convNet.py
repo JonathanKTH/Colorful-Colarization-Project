@@ -4,17 +4,24 @@ import tensorflow as tf
 import skimage.color as color
 import skimage.io as io
 from skimage import img_as_ubyte
+#from keras.datasets import cifar10
 
 #NEW
 import keras.backend as K
+#import tensorflow_datasets as tfds
 
 from keras.models import Model, load_model
 from keras.callbacks import LambdaCallback
-from keras.preprocessing.image import ImageDataGenerator
+from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 from keras.layers import Conv2D, Conv2DTranspose, Input, BatchNormalization, UpSampling2D
 from keras.optimizers import Adam
 from keras.engine.topology import Layer
 from keras import Sequential
+from keras import losses
+from colorizer import lab_to_rgb, rgb_to_lab
+from tqdm import tqdm
+
+
 
 import os, sys
 
@@ -34,68 +41,110 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
                                 activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
     return BatchNormalization(name='bn' + str(idx))(x)
 
-def create_weights(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.1))
+class LAB(Layer):
+    def call(self, x):
+        l, ab_truth = rgb_to_lab(x / 255)
+        return [l, ab_truth]
+    
+    def compute_output_shape(self, input_shape):
+        input_shape = np.array(input_shape)
+        l_shape = input_shape.copy()
+        ab_shape = input_shape.copy()
+        l_shape[-1] = 1
+        ab_shape[-1] = 2
+        return [tuple(l_shape), tuple(ab_shape)]
+    
+class MeanSquaredError(Layer):
+    def call(self, x):
+        ab_true, ab_pred = x
+        return losses.mean_squared_error(ab_pred, ab_truth)
+    
+    def compute_output_shape(self, input_shape):
+        return (None, 1)    
 
-def create_bias(size):
-    return tf.Variable(tf.constant(0.1, shape = [size]))
 
-def convolution(inputs, num_channels, filter_size, num_filters):
-    weights = create_weights(shape = [filter_size, filter_size, num_channels, num_filters])
-    bias = create_bias(num_filters)
+def identity_error(dummy_target, loss):
+    return K.mean(loss, axis=-1)
 
-  ## convolutional layer
-    layer = tf.nn.conv2d(input = inputs, filter = weights, strides= [1, 1, 1, 1], padding = 'SAME') + bias
-    layer = tf.nn.tanh(layer)
-    return layer
-
-
-def maxpool(inputs, kernel, stride):
-    layer = tf.nn.max_pool(value = inputs, ksize = [1, kernel, kernel, 1], strides = [1, stride, stride, 1], padding = "SAME")
-    return layer
-
-def upsampling(inputs):
-    layer = tf.image.resize_nearest_neighbor(inputs, (2*inputs.get_shape().as_list()[1], 2*inputs.get_shape().as_list()[2]))
-    return layer
+def image_a_b_gen(Xtrain, batches):
+    for batch in generator.flow(Xtrain, batch_size=10):
+        num_train = np.size(Xtrain, 0)
+        lab_batch = color.rgb2lab(Xtrain[:num_train]*1.0/255)
+        
+        X_batch = lab_batch[:,:,:,0]
+        Y_batch = Xtrain[:,:,:,1:]
+        X_batch = X_batch.reshape(num_train, 224, 224, 1)
+        #X_batch = X_batch.reshape(X_batch.shape+(1,))
+        Y_batch = Y_batch / 128
+        Y_batch = Y_batch.reshape(num_train, 224, 224, 2)
+        yield (X_batch, Y_batch)
 
 if __name__ == "__main__":
-    mydir = r'imgs'
+    DIR_DATA = r'easy_train'
+    mydir = r'holder/try'
     mydirTest = r'imgsTest'
     images = [files for files in os.listdir(mydir)]
+    
+    X = []
+    for filename in tqdm(os.listdir(DIR_DATA)):
+        #X.append(img_to_array(cv2.resize(load_img('images/imgs/'+filename), (224, 224))))
+        img = cv2.resize(io.imread(DIR_DATA + '/'+ filename), (224, 224))
+        
+        X.append(img_to_array(img))
+    X = np.array(X, dtype=float)
+    Xtrain = 1.0/255*X
+    
     
     imagesTest = [files for files in os.listdir(mydirTest)]
     #print("Hej")
     
-    N = len(images)
-    data = np.zeros([N, 224, 224, 3]) # N is number of images for training
-    for count in range(len(images)):
-        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
-        data[count,:,:,:] = img
+    ## ATTEMPT TO import batches. 
+    generator = ImageDataGenerator()
     
+#    train_batches = generator.flow_from_directory(mydir, (224, 224), batch_size=4)
+#    train_batches.batches_per_epoch = int(train_batches.samples / train_batches.batch_size)
+#    
+#    
+#    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+#    data, info = tfds.load("cifar10", with_info=True, split='train')
+#
+#
+#    
+#    N = len(images)
+#    data = np.zeros([N, 224, 224, 3]) # N is number of images for training
+#    for count in range(len(images)):
+#        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
+#        data[count,:,:,:] = img
+#    
     # Test image
     Ntest = len(imagesTest)
-    dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
+    #dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
+    dataTest = []
     for count in range(len(imagesTest)):
         img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (224, 224))
-        dataTest[count,:,:,:] = img
-        
-    num_train = N
-    Xtrain = color.rgb2lab(data[:num_train]*1.0/255)
-    xt = Xtrain[:,:,:,0]
-    yt = Xtrain[:,:,:,1:]
-    yt = yt/128
-    xt = xt.reshape(num_train, 224, 224, 1)
-    yt = yt.reshape(num_train, 224, 224, 2)
-    
+        dataTest.append(img_to_array(img))
+      
+    dataTest = np.array(dataTest, dtype=float)
+    #dataTest = 1.0/255*d
+       
+#        
+#    num_train = N
+#    Xtrain = color.rgb2lab(data[:num_train]*1.0/255)
+#    xt = Xtrain[:,:,:,0]
+#    yt = Xtrain[:,:,:,1:]
+#    yt = yt/128
+#    xt = xt.reshape(num_train, 224, 224, 1)
+#    yt = yt.reshape(num_train, 224, 224, 2)
+#    
     num_test = Ntest
     Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
     xtest = Xtest[:,:,:,0]
     xtest = xtest.reshape(num_test, 224, 224, 1)
-
-    session = tf.Session()
-    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
-    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
-    
+#
+#    session = tf.Session()
+#    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
+#    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
+#    
     
     l_in = Input((224, 224, 1))
     xx = conv_layer(l_in, 64, [1, 2], 1)
@@ -106,22 +155,65 @@ if __name__ == "__main__":
     xx = conv_layer(xx, 512, [1]*3, 6, 2)
     xx = conv_layer(xx, 256, [1]*3, 7)
     xx = conv_layer(xx, 128, [0.5, 1, 1], 8)
-#   
+   
     
     xx = Conv2D(2, 1, padding='same', name='conv9')(xx)
     xx = UpSampling2D(4, name='upsample')(xx)
     
     model = Model(l_in, xx)
+    model.summary()
     
-    model.compile(optimizer='adam',
-              loss='mean_squared_error',
-              metrics=['accuracy'])
-    trainer = Model()
+    model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])
+    batch_size = 10
+    #steps = 
+    model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=10, steps_per_epoch=4, verbose=1)
     
-    allmodel_sum = model.summary()
+    # DEFINE MODEL, where we greyscale images as well. 
+#    img_input = Input((None, None, 3), name='img_input')
+#    
+#    l, ab_truth = LAB(name='lab')(img_input)
+#    ab_pred = model(l)
     
-    # Train the model
-    history = model.fit(xt, yt, epochs=25, verbose = 1)
+    #loss = losses.mean_quared_error(ab_pred, ab_truth)
+    #loss = MeanSquaredError(name='mean_squared_error')([ab_truth, ab_pred])
+    
+#    trainer = Model(img_input, ab_pred)
+#    trainer.compile(Adam(3e-5, beta_2=0.99, decay=1e-3), identity_error)
+#    #trainer.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+#    
+#    trainer.summary()
+#    
+#    
+#    
+##    model.compile(optimizer='adam',
+##              loss='mean_squared_error',
+##              metrics=['accuracy'])
+##    
+#    
+#    # Train the model
+#    #history = model.fit(xt, yt, epochs=25, verbose = 1)
+#    
+#    epochs = 10
+#    
+#    for epoch in tqdm(range(epochs)):
+#        
+#        hist = trainer.fit_generator(train_batches, train_batches.batches_per_epoch,
+#                    verbose=0)
+#        print(hist.history['loss'])
+#    print("done")
+#    
+#    #Load test data as tensor, then use this function. Use 
+#    l, ab_truth = LAB(name='lab')(xtest[0])
+#    
+    
+    output = model.predict(xtest[0].reshape([1, 224, 224, 1]))
+    
+    image = np.zeros([224, 224, 3])
+    image[:,:,0]=xtest[0][:,:,0]
+    image[:,:,1:]=output[0]
+    image = color.lab2rgb(image)
+    image = img_as_ubyte(image)
+    io.imsave("test4.jpg", image)
     
     output = model.predict(xtest[0].reshape([1, 224, 224, 1])) * 128
     image = np.zeros([224, 224, 3])
@@ -130,6 +222,7 @@ if __name__ == "__main__":
     image = color.lab2rgb(image)
     image = img_as_ubyte(image)
     io.imsave("test2.jpg", image)
+    
 #    sys.exit()
 #    
 #    loss = tf.losses.mean_squared_error(labels = ytrue, predictions = xx)

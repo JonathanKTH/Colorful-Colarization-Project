@@ -80,8 +80,8 @@ def image_a_b_gen(Xtrain, batches):
         yield (X_batch, Y_batch)
 
 if __name__ == "__main__":
-    DIR_DATA = r'easy_train'
-    mydir = r'holder/try'
+    DIR_DATA = r'holder'
+    mydir = r'holder'
     mydirTest = r'imgsTest'
     images = [files for files in os.listdir(mydir)]
     
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     model.summary()
     
     model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])
-    batch_size = 10
+    batch_size = 100
     #steps = 
     model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=10, steps_per_epoch=4, verbose=1)
     
@@ -206,14 +206,14 @@ if __name__ == "__main__":
 #    l, ab_truth = LAB(name='lab')(xtest[0])
 #    
     
-    output = model.predict(xtest[0].reshape([1, 224, 224, 1]))
-    
-    image = np.zeros([224, 224, 3])
-    image[:,:,0]=xtest[0][:,:,0]
-    image[:,:,1:]=output[0]
-    image = color.lab2rgb(image)
-    image = img_as_ubyte(image)
-    io.imsave("test4.jpg", image)
+#    output = model.predict(xtest[0].reshape([1, 224, 224, 1]))
+#    
+#    image = np.zeros([224, 224, 3])
+#    image[:,:,0]=xtest[0][:,:,0]
+#    image[:,:,1:]=output[0]
+#    image = color.lab2rgb(image)
+#    image = img_as_ubyte(image)
+#    io.imsave("test4.jpg", image)
     
     output = model.predict(xtest[0].reshape([1, 224, 224, 1])) * 128
     image = np.zeros([224, 224, 3])

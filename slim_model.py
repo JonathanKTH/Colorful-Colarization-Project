@@ -9,6 +9,8 @@ import os
 import cv2
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 '''
 RGB Color space: [0,255], [0,255], [0,255] (or [0,1]*3)
 YUV Color space: [0,255], [0,255], [0,255] (or [0,1]*3)
@@ -26,8 +28,100 @@ lab_rgb:[0,100] x [-128,128] x [-128,128] --> [0,1]x[0,1]x[0,1]
 PIXEL_SIZE = 64
 TRAIN_MODEL = True
 
-def upscale2d_layer(inputs, dims):
-    return tf.image.resize_nearest_neighbor(inputs, (2*inputs.get_shape().as_list()[1], 2*inputs.get_shape().as_list()[2]))
+def upscale2d_layer(inputs, times=2):
+    return tf.image.resize_nearest_neighbor(inputs, (times*inputs.get_shape().as_list()[1], times*inputs.get_shape().as_list()[2]))
+
+def get_zhang_model(inputs):
+    slim = tf.contrib.slim
+    padding = 'SAME'
+    kernel_size = [3, 3]
+
+    net = slim.conv2d(inputs, 3, kernel_size, padding=padding)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 64, kernel_size, padding=padding)
+    net = slim.conv2d(net, 64, kernel_size, padding=padding, stride=2)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 128, kernel_size, padding=padding)
+    net = slim.conv2d(net, 128, kernel_size, padding=padding, stride=2)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.conv2d(net, 256, kernel_size, padding=padding, stride=2)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.batch_norm(net)
+
+    net = upscale2d_layer(net)
+
+    net = slim.conv2d(net, 128, kernel_size, padding=padding)
+    net = slim.conv2d(net, 128, kernel_size, padding=padding)
+    net = slim.conv2d(net, 128, kernel_size, padding=padding)
+
+    net = upscale2d_layer(net)
+    net = upscale2d_layer(net)
+
+    net = slim.conv2d(net, 2, kernel_size, padding=padding)
+    return net
+
+def get_yuv_model(inputs):
+    slim = tf.contrib.slim
+    padding = 'SAME'
+    kernel_size = [3, 3]
+
+    layer1 = slim.conv2d(inputs, 3, kernel_size, padding=padding)
+    batch1 = slim.batch_norm(layer1)
+
+    net = slim.conv2d(batch1, 64, kernel_size, padding=padding)
+    layer2 = slim.conv2d(net, 64, kernel_size, padding=padding)
+    net = slim.max_pool2d(layer2, [2,2])
+    batch2 = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 128, kernel_size, padding=padding)
+    layer3 = slim.conv2d(net, 128, kernel_size, padding=padding)
+    net = slim.max_pool2d(layer3, [2,2])
+    batch3 = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.conv2d(net, 256, kernel_size, padding=padding)
+    layer4 = slim.conv2d(net, 256, kernel_size, padding=padding)
+    net = slim.max_pool2d(layer4, [2,2])
+    batch4 = slim.batch_norm(net)
+
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    net = slim.conv2d(net, 512, kernel_size, padding=padding)
+    layer5 = slim.batch_norm(net)
+
+    layer3 = upscale2d_layer(layer3, 2)
+    layer4 = upscale2d_layer(layer4, 4)
+    layer5 = upscale2d_layer(layer5, 8)
+    hypercols = tf.concat([layer1, layer2, layer3, layer4, layer5], 3)
+
+    net = slim.conv2d(hypercols, 128, kernel_size, padding=padding)
+    net = slim.conv2d(net, 64, kernel_size, padding=padding)
+    net = slim.conv2d(net, 2, kernel_size, padding=padding)
+    return net
 
 def get_slim_model(inputs):
     slim = tf.contrib.slim
@@ -45,51 +139,24 @@ def get_slim_model(inputs):
     net = slim.max_pool2d(net, [2,2])
     net = slim.conv2d(net, 32, kernel_size, padding=padding)
     # net = slim.max_pool2d(net, [2,2])
-    net = slim.conv2d(net, 64, kernel_size, padding=padding)
+    # net = slim.conv2d(net, 64, kernel_size, padding=padding)
     # net = upscale2d_layer(net, (PIXEL_SIZE/32, PIXEL_SIZE/32))
+    # net = slim.conv2d(net, 32, kernel_size, padding=padding)
+    net = upscale2d_layer(net)
     net = slim.conv2d(net, 32, kernel_size, padding=padding)
-    net = upscale2d_layer(net, (PIXEL_SIZE/16, PIXEL_SIZE/16))
-    net = slim.conv2d(net, 32, kernel_size, padding=padding)
-    net = upscale2d_layer(net, (PIXEL_SIZE/8, PIXEL_SIZE/8))
+    net = upscale2d_layer(net)
     net = slim.conv2d(net, 16, kernel_size, padding=padding)
-    net = upscale2d_layer(net, (PIXEL_SIZE/4, PIXEL_SIZE/4))
+    net = upscale2d_layer(net)
     net = slim.conv2d(net, 16, kernel_size, padding=padding)
-    net = upscale2d_layer(net, (PIXEL_SIZE/2, PIXEL_SIZE/2))
+    net = upscale2d_layer(net)
     net = slim.conv2d(net, 8, kernel_size, padding=padding)
-    net = upscale2d_layer(net, (PIXEL_SIZE, PIXEL_SIZE))
+    net = upscale2d_layer(net)
     net = slim.conv2d(net, 2, kernel_size, padding=padding)
-
-    # net = slim.conv2d(inputs, 3, kernel_size, padding=padding)
-    # batch1 = slim.batch_norm(net)
-    #
-    # net = slim.conv2d(net, 64, kernel_size, padding=padding)
-    # net = slim.conv2d(net, 64, kernel_size, padding=padding)
-    # net = slim.max_pool2d(net, [2,2])
-    # batch2 = slim.batch_norm(net)
-    #
-    # net = slim.conv2d(net, 128, kernel_size, padding=padding)
-    # net = slim.conv2d(net, 128, kernel_size, padding=padding)
-    # net = slim.max_pool2d(net, [2,2])
-    # batch3 = slim.batch_norm(net)
-    #
-    # net = slim.conv2d(net, 256, kernel_size, padding=padding)
-    # net = slim.conv2d(net, 256, kernel_size, padding=padding)
-    # net = slim.conv2d(net, 256, kernel_size, padding=padding)
-    # net = slim.max_pool2d(net, [2,2])
-    # batch4 = slim.batch_norm(net)
-    #
-    # net = slim.conv2d(net, 512, kernel_size, padding=padding)
-    # net = slim.conv2d(net, 512, kernel_size, padding=padding)
-    # net = slim.conv2d(net, 512, kernel_size, padding=padding)
-    # net = slim.max_pool2d(net, [2,2])
-    # net = slim.batch_norm(net)
 
     # Omitted in report
     # net = slim.conv2d(net, 512, kernel_size, padding=padding)
     # net = slim.conv2d(net, 512, kernel_size, padding=padding)
     # net = slim.conv2d(net, 512, kernel_size, padding=padding)
-
-    # net = upscale2d_layer(net, )
 
     # l_in = Input((224, 224, 1))
     # xx = conv_layer(l_in, 64, [1, 2], 1)
@@ -103,8 +170,12 @@ def get_slim_model(inputs):
 
     return net
 
+def get_dense_net(inputs):
+    slim = tf.contrib.slim
+    return slim.fully_connected(inputs, 2)
+
 def get_test_images(with_labels=False):
-    dir = 'inputs'
+    dir = 'inputs/spec'
 
     # Read input-images for testing
     inputs = [image for image in os.listdir(dir)]
@@ -173,22 +244,25 @@ test_init_op = iterator.make_initializer(test_dataset)
 
 next_input, next_label = iterator.get_next()
 
-net = get_slim_model(next_input)
+net = get_dense_net(next_input)
 
 loss = tf.losses.mean_squared_error(labels = next_label, predictions = net)
 cost = tf.reduce_mean(loss)
 optimizer = tf.train.AdamOptimizer(learning_rate = 0.001).minimize(cost)
+
+loss_values = []
 
 with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
 
     if TRAIN_MODEL:
-        sess.run(train_init_op)
-        num_epochs = 1000
+        sess.run(test_init_op)
+        num_epochs = 300
         for i in range(num_epochs):
             sess.run(optimizer)
             lossvalue = sess.run(cost)
+            loss_values.append(lossvalue)
             print("epoch: " + str(i) + " loss: " + str(lossvalue))
 
         saver.save(sess, "tmp/model.ckpt")
@@ -206,3 +280,6 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     # print(res)
 
     save_images_from_prediction(test_imgs, res, N)
+
+plt.plot(loss_values)
+plt.show()

@@ -167,7 +167,7 @@ if __name__ == "__main__":
     batch_size = 100
     #steps = 
     model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=10, steps_per_epoch=4, verbose=1)
-    model.save(f'32_4Layer_model_{time.time()}.h5')  
+    model.save(f'32_4Layer_model.h5')  
     # DEFINE MODEL, where we greyscale images as well. 
 #    img_input = Input((None, None, 3), name='img_input')
 #    

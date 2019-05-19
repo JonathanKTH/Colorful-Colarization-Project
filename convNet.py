@@ -2,12 +2,18 @@ import numpy as np
 import cv2
 import tensorflow as tf
 import skimage.color as color
+from skimage.color import rgb2lab, lab2rgb, rgb2gray
+
 import skimage.io as io
 from skimage import img_as_ubyte
+from skimage.io import imsave
+
 #from keras.datasets import cifar10
 
 #NEW
 import keras.backend as K
+from keras.callbacks import TensorBoard
+
 #import tensorflow_datasets as tfds
 
 from keras.models import Model, load_model
@@ -66,21 +72,15 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
 #def identity_error(dummy_target, loss):
 #    return K.mean(loss, axis=-1)
 
-def image_a_b_gen(Xtrain, batches):
-    for batch in generator.flow(Xtrain, batch_size=10):
-        num_train = np.size(Xtrain, 0)
-        lab_batch = color.rgb2lab(Xtrain[:num_train]*1.0/255)
-        
-        X_batch = lab_batch[:,:,:,0]
-        Y_batch = Xtrain[:,:,:,1:]
-        X_batch = X_batch.reshape(num_train, 224, 224, 1)
-        #X_batch = X_batch.reshape(X_batch.shape+(1,))
-        Y_batch = Y_batch / 128
-        Y_batch = Y_batch.reshape(num_train, 224, 224, 2)
-        yield (X_batch, Y_batch)
-
+#def image_a_b_gen(Xtrain, batches):
+#   for batch in generator.flow(Xtrain, batch_size=batch_size):
+#        lab_batch = rgb2lab(batch)
+#        X_batch = lab_batch[:,:,:,0]
+#        Y_batch = lab_batch[:,:,:,1:] / 128
+#        yield (X_batch.reshape(X_batch.shape+(1,)), Y_batch)
+#        
 if __name__ == "__main__":
-    DIR_DATA = r'holder'
+    DIR_DATA = r'images/val_images'
     mydir = r'holder'
     mydirTest = r'imgsTest'
     images = [files for files in os.listdir(mydir)]
@@ -88,64 +88,32 @@ if __name__ == "__main__":
     X = []
     for filename in tqdm(os.listdir(DIR_DATA)):
         #X.append(img_to_array(cv2.resize(load_img('images/imgs/'+filename), (224, 224))))
-        img = cv2.resize(io.imread(DIR_DATA + '/'+ filename), (224, 224))
-        
-        X.append(img_to_array(img))
+        #img = cv2.resize(io.imread(DIR_DATA + '/'+ filename), (224, 224))
+        X.append(img_to_array(load_img(DIR_DATA + '/'+ filename, target_size=(224, 224))))
     X = np.array(X, dtype=float)
-    Xtrain = 1.0/255*X
+    X = 1.0/255*X
+    split = int(0.95*len(X))
+    Xtrain = X[:split]
     
     
     imagesTest = [files for files in os.listdir(mydirTest)]
     #print("Hej")
     
     ## ATTEMPT TO import batches. 
-    generator = ImageDataGenerator()
+    generator = ImageDataGenerator(shear_range=0.2,
+        zoom_range=0.2,
+        rotation_range=20,
+        horizontal_flip=True)
+    batch_size = 50
     
-#    train_batches = generator.flow_from_directory(mydir, (224, 224), batch_size=4)
-#    train_batches.batches_per_epoch = int(train_batches.samples / train_batches.batch_size)
-#    
-#    
-#    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-#    data, info = tfds.load("cifar10", with_info=True, split='train')
-#
-#
-#    
-#    N = len(images)
-#    data = np.zeros([N, 224, 224, 3]) # N is number of images for training
-#    for count in range(len(images)):
-#        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
-#        data[count,:,:,:] = img
-#    
-#    # Test image
-#    Ntest = len(imagesTest)
-#    #dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
-#    dataTest = []
-#    for count in range(len(imagesTest)):
-#        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (224, 224))
-#        dataTest.append(img_to_array(img))
-#      
-#    dataTest = np.array(dataTest, dtype=float)
-#    #dataTest = 1.0/255*d
-#       
-##        
-#    num_train = N
-#    Xtrain = color.rgb2lab(data[:num_train]*1.0/255)
-#    xt = Xtrain[:,:,:,0]
-#    yt = Xtrain[:,:,:,1:]
-#    yt = yt/128
-#    xt = xt.reshape(num_train, 224, 224, 1)
-#    yt = yt.reshape(num_train, 224, 224, 2)
-##    
-#    num_test = Ntest
-#    Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
-#    xtest = Xtest[:,:,:,0]
-#    xtest = xtest.reshape(num_test, 224, 224, 1)
-##
-#    session = tf.Session()
-#    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
-#    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
-#    
-    
+    def image_a_b_gen(Xtrain, batches):
+       for batch in generator.flow(Xtrain, batch_size=batch_size):
+            lab_batch = rgb2lab(batch)
+            X_batch = lab_batch[:,:,:,0]
+            Y_batch = lab_batch[:,:,:,1:] / 128
+            yield (X_batch.reshape(X_batch.shape+(1,)), Y_batch)
+            
+ 
     l_in = Input((224, 224, 1))
     xx = conv_layer(l_in, 64, [1, 2], 1)
     xx = conv_layer(xx, 128, [1, 2], 2)
@@ -163,11 +131,43 @@ if __name__ == "__main__":
     model = Model(l_in, xx)
     model.summary()
     
-    model.compile(optimizer='Adam', loss='mse', metrics=['accuracy'])
-    batch_size = 100
+    model.compile(optimizer='Adam', loss='mse')
+    tensorboard = TensorBoard(log_dir='Graph', histogram_freq=1,  
+          write_graph=True, write_images=True)
+    tensorboard.set_model(model)
+    sample_count = len(Xtrain)
+    batch_size = 32
+    steps_per_epoch = sample_count // batch_size
     #steps = 
-    model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=10, steps_per_epoch=4, verbose=1)
-    model.save(f'32_4Layer_model.h5')  
+    model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=50, steps_per_epoch=steps_per_epoch, verbose=1, callbacks=[tensorboard])
+    model.save(f'Full_model.h5')
+    
+    
+    #model = load_model('model2000.h5')
+    
+    
+    #TEST MODEL
+    Xtest = rgb2lab(1.0/255*X[split:])[:,:,:,0]
+    Xtest = Xtest.reshape(Xtest.shape+(1,))
+    Ytest = rgb2lab(1.0/255*X[split:])[:,:,:,1:]
+    Ytest = Ytest / 128
+    print (model.evaluate(Xtest, Ytest, batch_size=batch_size))
+    # Load black and white images
+#    color_me = []
+#    for filename in os.listdir(mydirTest):
+#            color_me.append(img_to_array(load_img(mydirTest + '/' +filename, target_size=(224, 224))))
+#    color_me = np.array(color_me, dtype=float)
+#    color_me = rgb2lab(1.0/255*color_me)[:,:,:,0]
+#    color_me = color_me.reshape(color_me.shape+(1,))
+#    # Test model
+#    output = model.predict(color_me)
+#    output = output * 128
+#    # Output colorizations
+#    for i in range(len(output)):
+#            cur = np.zeros((224, 224, 3))
+#            cur[:,:,0] = color_me[i][:,:,0]
+#            cur[:,:,1:] = output[i]
+#            imsave("result/img_"+str(i)+".png", lab2rgb(cur))
     # DEFINE MODEL, where we greyscale images as well. 
 #    img_input = Input((None, None, 3), name='img_input')
 #    

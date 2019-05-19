@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 import os, sys
 
-def conv_layer(x, filters, strides=1, idx=1, dilations=1):
+def convLayer(x, filters, strides=1, idx=1, dilations=1):
     if type(dilations) is int:
         dilations = [dilations]*len(strides)
     elif type(strides) is int:
@@ -41,8 +41,7 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
 if __name__ == "__main__":
     DIR_DATA = r'easy_train'
     mydir = r'holder'
-    mydirTest = r'test_images'
-    #images = [files for files in os.listdir(mydir)]
+    mydirTest = r'images/imgs'
     
     X = []
     for filename in tqdm(os.listdir(DIR_DATA)):
@@ -53,9 +52,7 @@ if __name__ == "__main__":
     Xtrain = X[:split]
     
     imagesTest = [files for files in os.listdir(mydirTest)]
-    #print("Hej")
-    
-    ## ATTEMPT TO import batches. 
+
     generator = ImageDataGenerator(shear_range=0.2,
         zoom_range=0.2,
         rotation_range=20,
@@ -71,14 +68,14 @@ if __name__ == "__main__":
             
  
     l_in = Input((224, 224, 1))
-    xx = conv_layer(l_in, 64, [1, 2], 1)
-    xx = conv_layer(xx, 128, [1, 2], 2)
-    xx = conv_layer(xx, 256, [1, 1, 2], 3)
-    xx = conv_layer(xx, 512, [1]*3, 4)
-    xx = conv_layer(xx, 512, [1]*3, 5, 2)
-    xx = conv_layer(xx, 512, [1]*3, 6, 2)
-    xx = conv_layer(xx, 256, [1]*3, 7)
-    xx = conv_layer(xx, 128, [0.5, 1, 1], 8)
+    xx = convLayer(l_in, 64, [1, 2], 1)
+    xx = convLayer(xx, 128, [1, 2], 2)
+    xx = convLayer(xx, 256, [1, 1, 2], 3)
+    xx = convLayer(xx, 512, [1]*3, 4)
+    xx = convLayer(xx, 512, [1]*3, 5, 2)
+    xx = convLayer(xx, 512, [1]*3, 6, 2)
+    xx = convLayer(xx, 256, [1]*3, 7)
+    xx = convLayer(xx, 128, [0.5, 1, 1], 8)
     xx = Conv2D(2, 1, padding='same', name='conv9')(xx)
     xx = UpSampling2D(4, name='upsample')(xx)
     model = Model(l_in, xx)
@@ -86,16 +83,11 @@ if __name__ == "__main__":
     
     model.summary()
     
-    # TENSORBOARD PREPERATIONS
-#    tensorboard = TensorBoard(log_dir='Graph/new',  
-#          write_graph=True, write_images=True)
-#    tensorboard.set_model(model)
-#    
     sample_count = len(Xtrain)
     batch_size = 32
     steps_per_epoch = sample_count // batch_size
     history = model.fit_generator(image_a_b_gen(Xtrain), epochs=25, steps_per_epoch=steps_per_epoch, verbose=1)
-    model.save('Full_model_2.h5')
+    model.save('Full_model.h5')
     print(history.history.keys())
     
     
@@ -106,9 +98,7 @@ if __name__ == "__main__":
     plt.xlabel('epoch')
     plt.legend(['train'], loc='upper left')
     plt.savefig('loss_plot.png')
-    #
-    
-    #model = load_model('Full_model.h5')
+    model = load_model('Full_model.h5')
         
     #Evaluation
     Xtest = rgb2lab(X[split:])[:,:,:,0]
@@ -125,7 +115,7 @@ if __name__ == "__main__":
 #    prediction_testset = np.array(prediction_testset, dtype=float)
 #    prediction_testset = rgb2lab(1.0/255*prediction_testset)[:,:,:,0]
 #    prediction_testset = prediction_testset.reshape(prediction_testset.shape+(1,))
-#    # Test model
+#
 #    output = model.predict(prediction_testset)
 #    output = output * 128
 #    #Save image

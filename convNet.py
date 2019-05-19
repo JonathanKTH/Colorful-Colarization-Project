@@ -18,7 +18,7 @@ from keras import Sequential
 from keras import losses
 from tqdm import tqdm
 
-
+import matplotlib.pyplot as plt
 
 import os, sys
 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     DIR_DATA = r'easy_train'
     mydir = r'holder'
     mydirTest = r'test_images'
-    images = [files for files in os.listdir(mydir)]
+    #images = [files for files in os.listdir(mydir)]
     
     X = []
     for filename in tqdm(os.listdir(DIR_DATA)):
@@ -51,7 +51,6 @@ if __name__ == "__main__":
     X = 1.0/255*X
     split = int(0.95*len(X))
     Xtrain = X[:split]
-    
     
     imagesTest = [files for files in os.listdir(mydirTest)]
     #print("Hej")
@@ -88,40 +87,52 @@ if __name__ == "__main__":
     model.summary()
     
     # TENSORBOARD PREPERATIONS
-    tensorboard = TensorBoard(log_dir='Graph',  
-          write_graph=True, write_images=True)
-    tensorboard.set_model(model)
-    
+#    tensorboard = TensorBoard(log_dir='Graph/new',  
+#          write_graph=True, write_images=True)
+#    tensorboard.set_model(model)
+#    
     sample_count = len(Xtrain)
     batch_size = 32
     steps_per_epoch = sample_count // batch_size
-    model.fit_generator(image_a_b_gen(Xtrain), epochs=50, steps_per_epoch=steps_per_epoch, verbose=1, callbacks=[tensorboard])
-    model.save('Full_model_.h5')
+    history = model.fit_generator(image_a_b_gen(Xtrain), epochs=25, steps_per_epoch=steps_per_epoch, verbose=1)
+    model.save('Full_model_2.h5')
+    print(history.history.keys())
+    
+    
+    
+    plt.plot(history.history['loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train'], loc='upper left')
+    plt.savefig('loss_plot.png')
+    #
     
     #model = load_model('Full_model.h5')
         
     #Evaluation
     Xtest = rgb2lab(X[split:])[:,:,:,0]
     Xtest = Xtest.reshape(Xtest.shape+(1,))
-    Ytest = rgb2lab(*X[split:])[:,:,:,1:]
+    Ytest = rgb2lab(X[split:])[:,:,:,1:]
     Ytest = Ytest / 128
     print (model.evaluate(Xtest, Ytest, batch_size=batch_size))
     
-    # Load greyscaled images
-    prediction_testset = []
-    for filename in os.listdir(mydirTest):
-            prediction_testset.append(img_to_array(load_img(mydirTest + '/' +filename, target_size=(224, 224))))
-    prediction_testset = np.array(prediction_testset, dtype=float)
-    prediction_testset = rgb2lab(1.0/255*prediction_testset)[:,:,:,0]
-    prediction_testset = prediction_testset.reshape(prediction_testset.shape+(1,))
-    # Test model
-    output = model.predict(prediction_testset)
-    output = output * 128
-    #Save image
-    for i in range(len(output)):
-        img_holder = np.zeros((224, 224, 3))
-        img_holder[:,:,0] = prediction_testset[i][:,:,0]
-        img_holder[:,:,1:] = output[i]
-        img_holder = cv2.resize(lab2rgb(img_holder), (64, 64))
-        imsave("result/img_"+str(i)+".png", img_holder)
     
+    # Load greyscaled images
+#    prediction_testset = []
+#    for filename in os.listdir(mydirTest):
+#            prediction_testset.append(img_to_array(load_img(mydirTest + '/' +filename, target_size=(224, 224))))
+#    prediction_testset = np.array(prediction_testset, dtype=float)
+#    prediction_testset = rgb2lab(1.0/255*prediction_testset)[:,:,:,0]
+#    prediction_testset = prediction_testset.reshape(prediction_testset.shape+(1,))
+#    # Test model
+#    output = model.predict(prediction_testset)
+#    output = output * 128
+#    #Save image
+#    for i in range(len(output)):
+#        img_holder = np.zeros((224, 224, 3))
+#        img_holder[:,:,0] = prediction_testset[i][:,:,0]
+#        img_holder[:,:,1:] = output[i]
+#        img_holder = cv2.resize(lab2rgb(img_holder), (64, 64))
+#        imsave("result/img_"+str(i)+".png", img_holder)
+#    

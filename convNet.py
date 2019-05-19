@@ -39,7 +39,7 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
     return BatchNormalization(name='bn' + str(idx))(x)
 
 if __name__ == "__main__":
-    DIR_DATA = r'images/val_images'
+    DIR_DATA = r'easy_train'
     mydir = r'holder'
     mydirTest = r'test_images'
     images = [files for files in os.listdir(mydir)]
@@ -88,14 +88,14 @@ if __name__ == "__main__":
     model.summary()
     
     # TENSORBOARD PREPERATIONS
-    tensorboard = TensorBoard(log_dir='Graph', histogram_freq=1,  
+    tensorboard = TensorBoard(log_dir='Graph',  
           write_graph=True, write_images=True)
     tensorboard.set_model(model)
     
     sample_count = len(Xtrain)
     batch_size = 32
     steps_per_epoch = sample_count // batch_size
-    model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=50, steps_per_epoch=steps_per_epoch, verbose=1, callbacks=[tensorboard])
+    model.fit_generator(image_a_b_gen(Xtrain), epochs=50, steps_per_epoch=steps_per_epoch, verbose=1, callbacks=[tensorboard])
     model.save('Full_model_.h5')
     
     #model = load_model('Full_model.h5')

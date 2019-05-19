@@ -98,7 +98,7 @@ if __name__ == "__main__":
     model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=50, steps_per_epoch=steps_per_epoch, verbose=1, callbacks=[tensorboard])
     model.save('Full_model_.h5')
     
-    model = load_model('Full_model.h5')
+    #model = load_model('Full_model.h5')
         
     #Evaluation
     Xtest = rgb2lab(X[split:])[:,:,:,0]

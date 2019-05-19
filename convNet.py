@@ -36,7 +36,7 @@ def conv_layer(x, filters, strides=1, idx=1, dilations=1):
         if type(stride) is int:
             x = Conv2D(filters, 3, strides=stride, padding='same', dilation_rate=dilation,
                        activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
-        else:
+        else:   
             x = Conv2DTranspose(filters, 3, strides=int(1 / stride), padding='same',
                                 activation='relu', name='conv' + str(idx) + '_' + str(i+1))(x)
     return BatchNormalization(name='bn' + str(idx))(x)
@@ -116,18 +116,18 @@ if __name__ == "__main__":
 #        img = cv2.resize(io.imread(mydir + '/'+ images[count]), (224, 224))
 #        data[count,:,:,:] = img
 #    
-    # Test image
-    Ntest = len(imagesTest)
-    #dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
-    dataTest = []
-    for count in range(len(imagesTest)):
-        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (224, 224))
-        dataTest.append(img_to_array(img))
-      
-    dataTest = np.array(dataTest, dtype=float)
-    #dataTest = 1.0/255*d
-       
-#        
+#    # Test image
+#    Ntest = len(imagesTest)
+#    #dataTest = np.zeros([Ntest, 224, 224, 3]) # N is number of images for testing
+#    dataTest = []
+#    for count in range(len(imagesTest)):
+#        img = cv2.resize(io.imread(mydirTest + '/'+ imagesTest[count]), (224, 224))
+#        dataTest.append(img_to_array(img))
+#      
+#    dataTest = np.array(dataTest, dtype=float)
+#    #dataTest = 1.0/255*d
+#       
+##        
 #    num_train = N
 #    Xtrain = color.rgb2lab(data[:num_train]*1.0/255)
 #    xt = Xtrain[:,:,:,0]
@@ -135,12 +135,12 @@ if __name__ == "__main__":
 #    yt = yt/128
 #    xt = xt.reshape(num_train, 224, 224, 1)
 #    yt = yt.reshape(num_train, 224, 224, 2)
-#    
-    num_test = Ntest
-    Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
-    xtest = Xtest[:,:,:,0]
-    xtest = xtest.reshape(num_test, 224, 224, 1)
-#
+##    
+#    num_test = Ntest
+#    Xtest = color.rgb2lab(dataTest[:num_test]*1.0/255)
+#    xtest = Xtest[:,:,:,0]
+#    xtest = xtest.reshape(num_test, 224, 224, 1)
+##
 #    session = tf.Session()
 #    x = tf.placeholder(tf.float32, shape = [None, 224, 224, 1], name = 'x')
 #    ytrue = tf.placeholder(tf.float32, shape = [None, 224, 224, 2], name = 'ytrue')
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     batch_size = 100
     #steps = 
     model.fit_generator(image_a_b_gen(Xtrain, batch_size), epochs=10, steps_per_epoch=4, verbose=1)
-    
+    model.save(f'32_4Layer_model_{time.time()}.h5')  
     # DEFINE MODEL, where we greyscale images as well. 
 #    img_input = Input((None, None, 3), name='img_input')
 #    
@@ -215,14 +215,14 @@ if __name__ == "__main__":
 #    image = img_as_ubyte(image)
 #    io.imsave("test4.jpg", image)
     
-    output = model.predict(xtest[0].reshape([1, 224, 224, 1])) * 128
-    image = np.zeros([224, 224, 3])
-    image[:,:,0]=xtest[0][:,:,0]
-    image[:,:,1:]=output[0]
-    image = color.lab2rgb(image)
-    image = img_as_ubyte(image)
-    io.imsave("test2.jpg", image)
-    
+#    output = model.predict(xtest[0].reshape([1, 224, 224, 1])) * 128
+#    image = np.zeros([224, 224, 3])
+#    image[:,:,0]=xtest[0][:,:,0]
+#    image[:,:,1:]=output[0]
+#    image = color.lab2rgb(image)
+#    image = img_as_ubyte(image)
+#    io.imsave("test2.jpg", image)
+#    
 #    sys.exit()
 #    
 #    loss = tf.losses.mean_squared_error(labels = ytrue, predictions = xx)
